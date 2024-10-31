@@ -1,0 +1,132 @@
+name: App Deployment with SSL Cert
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  blog-application-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Create version number for the Docker Image
+      - name: Create version number
+        run: |
+          echo "VERSION_NUMBER=${RANDOM}" >> $GITHUB_ENV
+
+      # Build Docker image
+      - name: Build a Docker image
+        run: |
+          sudo docker build -t adebisibiola/blog-app:${{ env.VERSION_NUMBER }} .
+
+      # Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Push the Docker Image to Docker Hub
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push adebisibiola/blog-app:${{ env.VERSION_NUMBER }}
+
+      # Install kubectl to deploy to EKS cluster
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.19.3'
+
+      # Configure AWS credentials for the EKS cluster
+      - name: Configure AWS Credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+
+      # Update kubeconfig to access the EKS cluster
+      - name: Configure kubectl to connect to EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }} 
+
+      # Install Helm for Kubernetes management
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
+
+
+      - name: Install cert-manager CRDs
+        run: |
+          kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.crds.yaml
+
+
+       # Deploy Cert-Manager 
+      - name: Install Cert-Manager
+        run: |
+         helm repo add jetstack https://charts.jetstack.io
+         helm repo update
+         helm upgrade --install cert-manager jetstack/cert-manager \
+           --namespace cert-manager --create-namespace --version v1.5.3
+
+
+        #  Install NGINX Ingress Controllers
+      # - name: Install NGINX Ingress Controllers
+      #   run: |
+      #     helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+      #     helm repo update
+      #     helm upgrade --install nginx-ingress ingress-nginx/ingress-nginx \
+      #       --namespace ingress-nginx \
+      #       --create-namespace \
+      #       --set controller.publishService.enabled=true
+
+      - name: Install NGINX Ingress Controllers
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo update
+
+          # Check if the NGINX Ingress Controller is already installed
+          if helm ls -n ingress-nginx | grep -q nginx-ingress; then
+            echo "NGINX Ingress Controller is already installed."
+          else
+            helm upgrade --install nginx-ingress ingress-nginx/ingress-nginx \
+              --namespace ingress-nginx \
+              --create-namespace \
+              --set controller.publishService.enabled=true
+          fi
+
+
+      # # Deploy Cert-Manager (if not already installed)
+      # - name: Install Cert-Manager
+      #   run: |
+      #     helm repo add jetstack https://charts.jetstack.io
+      #     helm repo update
+      #     helm upgrade --install cert-manager jetstack/cert-manager \
+      #       --namespace cert-manager --create-namespace --version v1.5.3
+
+      # Deploy the Helm chart for your application
+      - name: Deploy App with Helm
+        run: |     
+          helm upgrade --install blogging-application blogging-application -f blogging-application/values.yaml --set image.tag=${{ env.VERSION_NUMBER}} --set replicaCount=3
+
+           
+      # # Create Ingress with SSL (Cert-Manager will handle certificate)
+      # - name: Create Ingress with SSL
+      #   run: |
+      #     kubectl apply -f ingress-with-ssl.yaml
+
+      # Send deployment notification email
+      - name: Notify Deployment Success
+        uses: dawidd6/action-send-mail@v3
+        with:
+          username: funkebiola17@gmail.com
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          subject: "New Deployment - App version: ${{ env.VERSION_NUMBER }}"
+          to: funkebiola17@gmail.com
+          from: funkebiola17@gmail.com
+          body: "The Application has been deployed with SSL at https://syjjem.online."

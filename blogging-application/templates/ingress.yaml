@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-for-blog-app
+  annotations:
+     cert-manager.io/cluster-issuer: letsencrypt-production
+     nginx.ingress.kubernetes.io/ingress.class: nginx
+     nginx.ingress.kubernetes.io/rewrite-target: /
+  labels:
+    name: ingress-for-blog-app
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: blog.syjjem.online
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: blog-app-service
+            port:
+              number: 80
+    
+  - host: myadmin.syjjem.online
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: phpmyadmin-service
+            port:
+              number: 80
+
+  tls:
+  - hosts:
+    - blog.syjjem.online
+    - myadmin.syjjem.online
+    secretName: blogging-application-tls
+
+
+ 
+ 
