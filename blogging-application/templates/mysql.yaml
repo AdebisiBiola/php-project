@@ -12,13 +12,13 @@ spec:
       labels:
         app: mysql-app
     spec:
-      initContainers:
-      - name: clean-mysql-data
-        image: busybox
-        command: ['sh', '-c', 'rm -rf /var/lib/mysql/* || true']
-        volumeMounts:
-        - name: blog-app-s
-          mountPath: /var/lib/mysql
+      # initContainers:
+      # - name: clean-mysql-data
+      #   image: busybox
+      #   command: ['sh', '-c', 'rm -rf /var/lib/mysql/* || true']
+      #   volumeMounts:
+      #   - name: blog-app-s
+      #     mountPath: /var/lib/mysql
       containers:
       - name: mysql-app                   
         image: mysql:5.7
