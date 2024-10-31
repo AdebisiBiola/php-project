@@ -1,4 +1,4 @@
-name: App Deployment with SSL
+name: App Deployment with SSL cert
 on:
   push:
     branches:
