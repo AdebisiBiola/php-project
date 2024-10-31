@@ -12,13 +12,13 @@ spec:
       labels:
         app: mysql-app
     spec:
-      initContainers:
-      - name: clean-mysql-data
-        image: busybox
-        command: ['sh', '-c', 'rm -rf /var/lib/mysql/* || true']
-        volumeMounts:
-        - name: blog-app-sc
-          mountPath: /var/lib/mysql
+      # initContainers:
+      # - name: clean-mysql-data
+      #   image: busybox
+      #   command: ['sh', '-c', 'rm -rf /var/lib/mysql/* || true']
+      #   volumeMounts:
+      #   - name: blog-app-sc
+      #     mountPath: /var/lib/mysql
       containers:
       - name: mysql-app                   
         image: mysql:5.7
@@ -36,12 +36,12 @@ spec:
               name: configmap-mysql
               key: MYSQL_DATABASE
         volumeMounts:
-        - name: blog-app-sc
+        - name: blog-app-s
           mountPath: /var/lib/mysql
       volumes:
-        - name: blog-app-sc
+        - name: blog-app-s
           persistentVolumeClaim:
-             claimName: blog-app-pvc
+             claimName: blog-app-pvc1
 ---
 apiVersion: v1
 kind: Service
